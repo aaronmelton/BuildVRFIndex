@@ -32,18 +32,6 @@ from Exscript.util.decorator    import autologin
 from Exscript.util.interact     import read_login
 from Exscript.util.report		import status,summarize
 
-def fileExist(fileName):
-# This function checks the parent directory for the presence of a file
-# Returns true if found, false if not
-
-	try:
-		# If file can be opened, it must exist
-		with open(fileName, 'r') as openedFile:
-			return 1	# File found
-
-	# Exception: file cannot be opened, must not exist
-	except IOError:
-		return 0		# File NOT found
 
 @autologin()		# Exscript login decorator; Must precede buildIndex!
 def buildIndex(job, host, socket):
@@ -103,7 +91,20 @@ def cleanIndex(indexFileTmp, host):
 	# Always remove the temporary index file
 	finally:
 		os.remove(indexFileTmp)	# Critical to remove temporary file as it contains passwords!
-			
+
+def fileExist(fileName):
+# This function checks the parent directory for the presence of a file
+# Returns true if found, false if not
+
+	try:
+		# If file can be opened, it must exist
+		with open(fileName, 'r') as openedFile:
+			return 1	# File found
+
+	# Exception: file cannot be opened, must not exist
+	except IOError:
+		return 0		# File NOT found
+		
 def routerLogin():
 # This function prompts the user to provide their login credentials and logs into each
 # of the routers before calling the buildIndex function to extract relevant portions of
