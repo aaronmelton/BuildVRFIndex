@@ -21,9 +21,11 @@
 import base64		# Required to decode password
 import ConfigParser # Required for configuration file
 import Exscript		# Required for SSH, queue & logging functionality
-import os			# Required to determine OS of host
 import re			# Required for REGEX operations
+import os			# Required to determine OS of host
 
+from base64						import b64decode
+from ConfigParser				import ConfigParser
 from Exscript                   import Account, Queue, Host
 from Exscript.protocols 		import SSH2
 from Exscript.util.file			import get_hosts_from_file
@@ -31,7 +33,8 @@ from Exscript.util.log          import log_to
 from Exscript.util.decorator    import autologin
 from Exscript.util.interact     import read_login
 from Exscript.util.report		import status,summarize
-
+from re							import sub
+from os							import name, remove, system
 
 @autologin()		# Exscript login decorator; Must precede buildIndex!
 def buildIndex(job, host, socket):
@@ -41,7 +44,7 @@ def buildIndex(job, host, socket):
 # the program temporarily captures the pre-shared key.  'crypto isakmp profile' was not
 # a suitable query due to the possibility of multiple 'match identity address' statements
 
-	print("Building index...")		# Let the user know the program is working dot dot dot
+	print("--> Building index...")		# Let the user know the program is working dot dot dot
 	socket.execute("terminal length 0")	# Disable user-prompt to page through config
 										# Exscript doesn't always recognize Cisco IOS
 										# for socket.autoinit() to work correctly
@@ -73,11 +76,11 @@ def cleanIndex(indexFileTmp, host):
 					# Use REGEX to step through config and remove everything but
 					# the VRF Name, Peer IP & append router hostname/IP to the end
 					a = srcIndex.read()
-					b = re.sub(r'show running-config \| section crypto keyring.*', '', a)
-					c = re.sub(r'crypto keyring ', '' ,b)
-					d = re.sub(r'.(\r?\n)..pre-shared-key.address.', ',' ,c)
-					e = re.sub(r'.key.*\r', ','+host.get_name() ,d)
-					f = re.sub(r'.*#', '', e)
+					b = sub(r'show running-config \| section crypto keyring.*', '', a)
+					c = sub(r'crypto keyring ', '' ,b)
+					d = sub(r'.(\r?\n)..pre-shared-key.address.', ',' ,c)
+					e = sub(r'.key.*\r', ','+host.get_name() ,d)
+					f = sub(r'.*#', '', e)
 					dstIndex.write(f)
 
 			# Exception: actual index file was not able to be opened
@@ -90,7 +93,7 @@ def cleanIndex(indexFileTmp, host):
 	
 	# Always remove the temporary index file
 	finally:
-		os.remove(indexFileTmp)	# Critical to remove temporary file as it contains passwords!
+		remove(indexFileTmp)	# Critical to remove temporary file as it contains passwords!
 
 def fileExist(fileName):
 # This function checks the parent directory for the presence of a file
@@ -99,7 +102,7 @@ def fileExist(fileName):
 	try:
 		# If file can be opened, it must exist
 		with open(fileName, 'r') as openedFile:
-			return 1	# File found
+			return True	# File found
 
 	# Exception: file cannot be opened, must not exist
 	except IOError:
@@ -123,7 +126,7 @@ def routerLogin():
 		elif password == '':			# If password is blank
 			account = read_login()		# Prompt the user for login credentials
 		else:							# Else use username/password from configFile
-			account = Account(name=username, password=base64.b64decode(password))
+			account = Account(name=username, password=b64decode(password))
 			
 		queue = Queue(verbose=0, max_threads=1)	# Minimal message from queue, 1 threads
 		queue.add_account(account)				# Use supplied user credentials
@@ -142,9 +145,9 @@ def routerLogin():
 configFile='settings.cfg'
 
 # Determine OS in use and clear screen of previous output
-os.system('cls' if os.name=='nt' else 'clear')
+system('cls' if name=='nt' else 'clear')
 
-print "Build VRF Index v0.0.1-alpha"
+print "Build VRF Index v0.0.2-alpha"
 print "----------------------------"
 
 try:
@@ -155,15 +158,18 @@ except IOError:
 # Except if configFile does not exist, create an example configFile to work from
 	try:
 		with open (configFile, 'w') as exampleFile:
-			exampleFile.write("[files]\n#variable='C:\path\\to\\filename.ext'\nrouterFile='routers.txt'\nindexFile='index.txt'\nindexFileTmp='index.txt.tmp'")
-			exampleFile.write("\n\n[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=''\npassword=''\n")
+			print
+			print "--> Config file not found; Creating settings.cfg."
+			print
+			exampleFile.write("[files]\n#variable=C:\path\\to\\filename.ext\nrouterFile=routers.txt\nindexFile=index.txt\nindexFileTmp=index.txt.tmp")
+			exampleFile.write("\n\n[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n")
 	except IOError:
 		print "\nAn error occurred creating the example "+configFile+".\n"
 
 finally:
 # Finally, using the provided configFile (or example created), pull values
 # from the config and login to the router(s)
-	config = ConfigParser.ConfigParser(allow_no_value=True)
+	config = ConfigParser(allow_no_value=True)
 	config.read(configFile)
 	routerFile = config.get('files', 'routerFile')
 	indexFile = config.get('files', 'indexFile')
@@ -174,9 +180,9 @@ finally:
 	if fileExist(routerFile):
 	# If the routerFile exists, proceed to login to routers
 		if fileExist(indexFile):	# If indexFile exists
-			os.remove(indexFile)	# Remove existing indexFile
+			remove(indexFile)	# Remove existing indexFile
 		routerLogin()
-		print "Done."
+		print "--> Done."
 	else: # if fileExist(routerFile):
 	# Else if routerFile does not exist, create an example file and exit
 		try:
