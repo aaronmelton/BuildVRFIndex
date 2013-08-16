@@ -22,6 +22,7 @@ import base64		# Required to decode password
 import ConfigParser # Required for configuration file
 import Exscript		# Required for SSH, queue & logging functionality
 import re			# Required for REGEX operations
+import sys			# Required for printing without newline
 import os			# Required to determine OS of host
 
 from base64						import b64decode
@@ -34,7 +35,9 @@ from Exscript.util.decorator    import autologin
 from Exscript.util.interact     import read_login
 from Exscript.util.report		import status,summarize
 from re							import sub
+from sys						import stdout
 from os							import name, remove, system
+
 
 @autologin()		# Exscript login decorator; Must precede buildIndex!
 def buildIndex(job, host, socket):
@@ -44,7 +47,7 @@ def buildIndex(job, host, socket):
 # the program temporarily captures the pre-shared key.  'crypto isakmp profile' was not
 # a suitable query due to the possibility of multiple 'match identity address' statements
 
-	print("--> Building index...")		# Let the user know the program is working dot dot dot
+	stdout.write('.')					# Write period without trailing newline
 	socket.execute("terminal length 0")	# Disable user-prompt to page through config
 										# Exscript doesn't always recognize Cisco IOS
 										# for socket.autoinit() to work correctly
@@ -85,11 +88,11 @@ def cleanIndex(indexFileTmp, host):
 
 			# Exception: actual index file was not able to be opened
 			except IOError:
-				print "\nAn error occurred opening the index file.\n"
+				print "\n--> An error occurred opening "+indexFile+".\n"
 
 	# Exception: temporary index file was not able to be opened
 	except IOError:
-		print "\nAn error occurred opening the temporary index file.\n"
+		print "\n--> An error occurred opening "+indexFileTmp+".\n"
 	
 	# Always remove the temporary index file
 	finally:
@@ -130,6 +133,8 @@ def routerLogin():
 			
 		queue = Queue(verbose=0, max_threads=1)	# Minimal message from queue, 1 threads
 		queue.add_account(account)				# Use supplied user credentials
+		print
+		stdout.write("--> Building index...") 	# Print without trailing newline
 		queue.run(hosts, buildIndex)			# Create queue using provided hosts
 		queue.shutdown()						# End all running threads and close queue
 		
@@ -138,7 +143,7 @@ def routerLogin():
 
 	# Exception: router file was not able to be opened
 	except IOError:
-		print "\nAn error occurred opening the router file.\n"
+		print "\n--> An error occurred opening "+routerFile+".\n"
 
 
 # Change the filenames of these variables to suit your needs
@@ -159,23 +164,23 @@ except IOError:
 	try:
 		with open (configFile, 'w') as exampleFile:
 			print
-			print "--> Config file not found; Creating settings.cfg."
+			print "--> Config file not found; Creating "+configFile+"."
 			print
-			exampleFile.write("[files]\n#variable=C:\path\\to\\filename.ext\nrouterFile=routers.txt\nindexFile=index.txt\nindexFileTmp=index.txt.tmp")
-			exampleFile.write("\n\n[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n")
+			exampleFile.write("[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n\n")
+			exampleFile.write("[BuildVRFIndex]\n#Check your paths! Files will be created; Directories will not.\n#Bad directories may result in errors!\n#variable=C:\path\\to\\filename.ext\nrouterFile=routers.txt\nindexFile=index.txt\nindexFileTmp=index.txt.tmp\n")
 	except IOError:
-		print "\nAn error occurred creating the example "+configFile+".\n"
+		print "\n--> An error occurred creating the example "+configFile+".\n"
 
 finally:
 # Finally, using the provided configFile (or example created), pull values
 # from the config and login to the router(s)
 	config = ConfigParser(allow_no_value=True)
 	config.read(configFile)
-	routerFile = config.get('files', 'routerFile')
-	indexFile = config.get('files', 'indexFile')
-	indexFileTmp = config.get('files', 'indexFileTmp')
 	username = config.get('account', 'username')
 	password = config.get('account', 'password')
+	routerFile = config.get('BuildVRFIndex', 'routerFile')
+	indexFile = config.get('BuildVRFIndex', 'indexFile')
+	indexFileTmp = config.get('BuildVRFIndex', 'indexFileTmp')
 	
 	if fileExist(routerFile):
 	# If the routerFile exists, proceed to login to routers
