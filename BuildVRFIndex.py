@@ -39,6 +39,10 @@ from sys						import stdout
 from os							import name, remove, system
 
 
+def version():
+# This function tracks the application version.
+	return "v0.0.4-alpha"
+
 @autologin()		# Exscript login decorator; Must precede buildIndex!
 def buildIndex(job, host, socket):
 # This function builds the index file by connecting to the router and extracting all
@@ -55,13 +59,17 @@ def buildIndex(job, host, socket):
 	# Send command to router to capture results
 	socket.execute("show running-config | section crypto keyring")
 
-	outputFile = open(indexFileTmp, 'a')	# Open output file (will overwrite contents)
+	with open(indexFileTmp, 'a') as outputFile:
+		try:
+			outputFile.write(socket.response)	# Write contents of running config to output file
+		except IOError:
+			print
+			print "--> An error occurred opening "+indexFileTmp+"."
 
-	outputFile.write(socket.response)	# Write contents of running config to output file
-	outputFile.close()					# Close output file
-	socket.send("exit\r")				# Send the "exit" command to log out of router gracefully
-	socket.close()						# Close SSH connection
 
+
+	socket.send("exit\r")	# Send the "exit" command to log out of router gracefully
+	socket.close()			# Close SSH connection
 	cleanIndex(indexFileTmp, host)		# Execute function to clean-up the index file
 	
 def cleanIndex(indexFileTmp, host):
@@ -88,11 +96,12 @@ def cleanIndex(indexFileTmp, host):
 
 			# Exception: actual index file was not able to be opened
 			except IOError:
-				print "\n--> An error occurred opening "+indexFile+".\n"
-
+				print
+				print "--> An error occurred opening "+indexFile+"."
 	# Exception: temporary index file was not able to be opened
 	except IOError:
-		print "\n--> An error occurred opening "+indexFileTmp+".\n"
+		print
+		print "--> An error occurred opening "+indexFileTmp+"."
 	
 	# Always remove the temporary index file
 	finally:
@@ -109,7 +118,7 @@ def fileExist(fileName):
 
 	# Exception: file cannot be opened, must not exist
 	except IOError:
-		return 0		# File NOT found
+		return False	# File NOT found
 		
 def routerLogin():
 # This function prompts the user to provide their login credentials and logs into each
@@ -123,14 +132,20 @@ def routerLogin():
 		
 		# Read hosts from specified file & remove duplicate entries, set protocol to SSH2
 		hosts = get_hosts_from_file(routerFile,default_protocol='ssh2',remove_duplicates=True)
-		
+
+
 		if username == '':				# If username is blank
+			print
 			account = read_login()		# Prompt the user for login credentials
+
 		elif password == '':			# If password is blank
+			print
 			account = read_login()		# Prompt the user for login credentials
+
 		else:							# Else use username/password from configFile
 			account = Account(name=username, password=b64decode(password))
-			
+
+		
 		queue = Queue(verbose=0, max_threads=1)	# Minimal message from queue, 1 threads
 		queue.add_account(account)				# Use supplied user credentials
 		print
@@ -143,8 +158,8 @@ def routerLogin():
 
 	# Exception: router file was not able to be opened
 	except IOError:
-		print "\n--> An error occurred opening "+routerFile+".\n"
-
+		print
+		print "--> An error occurred opening "+routerFile+"."
 
 # Change the filenames of these variables to suit your needs
 configFile='settings.cfg'
@@ -152,12 +167,14 @@ configFile='settings.cfg'
 # Determine OS in use and clear screen of previous output
 system('cls' if name=='nt' else 'clear')
 
-print "Build VRF Index v0.0.2-alpha"
-print "----------------------------"
+# PRINT PROGRAM BANNER
+print "Build VRF Index "+version()
+print "-"*(16+len(version()))
 
 try:
 # Try to open configFile
-	file = open(configFile, 'r')
+	with open(configFile, 'r'):
+		print
 	
 except IOError:
 # Except if configFile does not exist, create an example configFile to work from
@@ -166,7 +183,8 @@ except IOError:
 			print
 			print "--> Config file not found; Creating "+configFile+"."
 			print
-			exampleFile.write("[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n\n")
+			exampleFile.write("## BuildVRFIndex.py CONFIGURATION FILE ##\n#\n")
+			exampleFile.write("[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n#\n")
 			exampleFile.write("[BuildVRFIndex]\n#Check your paths! Files will be created; Directories will not.\n#Bad directories may result in errors!\n#variable=C:\path\\to\\filename.ext\nrouterFile=routers.txt\nindexFile=index.txt\nindexFileTmp=index.txt.tmp\n")
 	except IOError:
 		print "\n--> An error occurred creating the example "+configFile+".\n"
@@ -187,21 +205,22 @@ finally:
 		if fileExist(indexFile):	# If indexFile exists
 			remove(indexFile)	# Remove existing indexFile
 		routerLogin()
-		print "--> Done."
+
 	else: # if fileExist(routerFile):
 	# Else if routerFile does not exist, create an example file and exit
 		try:
 			with open (routerFile, 'w') as exampleFile:
+				exampleFile.write("## BuildVRFIndex.py ROUTER FILE ##\n#\n")
+				exampleFile.write("#Enter a list of hostnames or IP Addresses, one per line.\n#For example:\n")
 				exampleFile.write("192.168.1.1\n192.168.1.2\nRouterA\nRouterB\nRouterC\netc...")
-				print
-				print "Required file "+routerFile+" not found; One has been created for you."
-				print "This file must contain a list, one per line, of Hostnames or IP addresses the"
-				print "application will then connect to download the running-config."
-				print
+				print "--> Router file not found; Creating "+routerFile+"."
+
+
+
+
+				print "    Edit this file and restart the application."
 		except IOError:
-			print
-			print "Required file "+routerFile+" not found."
+			print "--> Required file "+routerFile+" not found; An error has occurred creating "+routerFile+"."
+
 			print "This file must contain a list, one per line, of Hostnames or IP addresses the"
 			print "application will then connect to download the running-config."
-			print
-

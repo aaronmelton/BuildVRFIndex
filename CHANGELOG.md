@@ -1,6 +1,13 @@
 # BuildVRFIndex.py #
 ---
 
+## BuildVRFIndex v0.0.4-alpha (2013-08-20) ##
+* Added additional comments to code, configFile, routerFile.
+* Added configFile functionality to give application the ability to retrieve
+  user-specified settings from a config file.  Application use now extended
+  such that the list of routers, index and respective paths can be specified
+  in the file.  Application can also use configured username and password.
+
 ## BuildVRFIndex v0.0.3-alpha (2013-08-16) ##
 * Changed the configFile format in such a way that a single configFile
   can be used for my different VRF applications.
