@@ -1,6 +1,10 @@
 # BuildVRFIndex.py #
 ---
 
+## BuildVRFIndex v0.0.5-alpha (2013-08-23) ##
+* Removed Python modules not required by this application.
+* Minor corrections to output spacing.
+
 ## BuildVRFIndex v0.0.4-alpha (2013-08-20) ##
 * Added additional comments to code, configFile, routerFile.
 * Added configFile functionality to give application the ability to retrieve

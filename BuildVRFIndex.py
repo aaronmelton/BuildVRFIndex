@@ -20,7 +20,7 @@
 
 import base64		# Required to decode password
 import ConfigParser # Required for configuration file
-import Exscript		# Required for SSH, queue & logging functionality
+import Exscript		# Required for SSH & queue functionality
 import re			# Required for REGEX operations
 import sys			# Required for printing without newline
 import os			# Required to determine OS of host
@@ -30,10 +30,8 @@ from ConfigParser				import ConfigParser
 from Exscript                   import Account, Queue, Host
 from Exscript.protocols 		import SSH2
 from Exscript.util.file			import get_hosts_from_file
-from Exscript.util.log          import log_to
 from Exscript.util.decorator    import autologin
 from Exscript.util.interact     import read_login
-from Exscript.util.report		import status,summarize
 from re							import sub
 from sys						import stdout
 from os							import name, remove, system
@@ -41,7 +39,7 @@ from os							import name, remove, system
 
 def version():
 # This function tracks the application version.
-	return "v0.0.4-alpha"
+	return "v0.0.5-alpha"
 
 @autologin()		# Exscript login decorator; Must precede buildIndex!
 def buildIndex(job, host, socket):
@@ -153,9 +151,6 @@ def routerLogin():
 		queue.run(hosts, buildIndex)			# Create queue using provided hosts
 		queue.shutdown()						# End all running threads and close queue
 		
-		#print status(Logger())	# Print current % status of operation to screen
-								# Status not useful unless # threads > 1
-
 	# Exception: router file was not able to be opened
 	except IOError:
 		print
@@ -182,12 +177,12 @@ except IOError:
 		with open (configFile, 'w') as exampleFile:
 			print
 			print "--> Config file not found; Creating "+configFile+"."
-			print
 			exampleFile.write("## BuildVRFIndex.py CONFIGURATION FILE ##\n#\n")
 			exampleFile.write("[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n#\n")
 			exampleFile.write("[BuildVRFIndex]\n#Check your paths! Files will be created; Directories will not.\n#Bad directories may result in errors!\n#variable=C:\path\\to\\filename.ext\nrouterFile=routers.txt\nindexFile=index.txt\nindexFileTmp=index.txt.tmp\n")
 	except IOError:
-		print "\n--> An error occurred creating the example "+configFile+".\n"
+		print
+		print "--> An error occurred creating the example "+configFile+"."
 
 finally:
 # Finally, using the provided configFile (or example created), pull values
@@ -214,13 +209,8 @@ finally:
 				exampleFile.write("#Enter a list of hostnames or IP Addresses, one per line.\n#For example:\n")
 				exampleFile.write("192.168.1.1\n192.168.1.2\nRouterA\nRouterB\nRouterC\netc...")
 				print "--> Router file not found; Creating "+routerFile+"."
-
-
-
-
 				print "    Edit this file and restart the application."
 		except IOError:
 			print "--> Required file "+routerFile+" not found; An error has occurred creating "+routerFile+"."
-
 			print "This file must contain a list, one per line, of Hostnames or IP addresses the"
 			print "application will then connect to download the running-config."
