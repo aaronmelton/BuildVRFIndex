@@ -1,6 +1,10 @@
 # BuildVRFIndex.py #
 ---
 
+## BuildVRFIndex v0.0.6-alpha (2013-08-28) ##
+* Added functionality to specify configFile from the command line.
+* Updated README.md
+
 ## BuildVRFIndex v0.0.5-alpha (2013-08-23) ##
 * Removed Python modules not required by this application.
 * Minor corrections to output spacing.

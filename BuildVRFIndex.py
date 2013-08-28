@@ -18,15 +18,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
+import argparse		# Required to read arguments from the command line
 import base64		# Required to decode password
 import ConfigParser # Required for configuration file
+import datetime		# Required for date format
 import Exscript		# Required for SSH & queue functionality
 import re			# Required for REGEX operations
 import sys			# Required for printing without newline
 import os			# Required to determine OS of host
 
+from argparse					import ArgumentParser, RawDescriptionHelpFormatter
 from base64						import b64decode
 from ConfigParser				import ConfigParser
+from datetime                   import datetime
 from Exscript                   import Account, Queue, Host
 from Exscript.protocols 		import SSH2
 from Exscript.util.file			import get_hosts_from_file
@@ -37,9 +41,17 @@ from sys						import stdout
 from os							import name, remove, system
 
 
-def version():
-# This function tracks the application version.
-	return "v0.0.5-alpha"
+class Application:
+# This class was created to provide me with an easy way to update application
+# details across all my applications.  Also used to display information when
+# application is executed with "--help" argument.
+	author = "Aaron Melton <aaron@aaronmelton.com>"
+	date = "(2013-08-28)"
+	description = "Creates a CSV of VRF Names across multiple Cisco routers"
+	name = "BuildVRFIndex.py"
+	url = "https://github.com/aaronmelton/BuildVRFIndex"
+	version = "v0.0.6-alpha"
+
 
 @autologin()		# Exscript login decorator; Must precede buildIndex!
 def buildIndex(job, host, socket):
@@ -57,14 +69,15 @@ def buildIndex(job, host, socket):
 	# Send command to router to capture results
 	socket.execute("show running-config | section crypto keyring")
 
+	# Open indexFileTmp to temporarily hold router output
 	with open(indexFileTmp, 'a') as outputFile:
 		try:
 			outputFile.write(socket.response)	# Write contents of running config to output file
+		
+		# Exception: indexFileTmp could not be opened
 		except IOError:
 			print
 			print "--> An error occurred opening "+indexFileTmp+"."
-
-
 
 	socket.send("exit\r")	# Send the "exit" command to log out of router gracefully
 	socket.close()			# Close SSH connection
@@ -90,13 +103,14 @@ def cleanIndex(indexFileTmp, host):
 					d = sub(r'.(\r?\n)..pre-shared-key.address.', ',' ,c)
 					e = sub(r'.key.*\r', ','+host.get_name() ,d)
 					f = sub(r'.*#', '', e)
-					dstIndex.write(f)
+					dstIndex.write(f)	# Write cleaned-up output to indexFile
 
-			# Exception: actual index file was not able to be opened
+			# Exception: actual index file could not be opened
 			except IOError:
 				print
 				print "--> An error occurred opening "+indexFile+"."
-	# Exception: temporary index file was not able to be opened
+
+	# Exception: temporary index file could not be opened
 	except IOError:
 		print
 		print "--> An error occurred opening "+indexFileTmp+"."
@@ -131,7 +145,6 @@ def routerLogin():
 		# Read hosts from specified file & remove duplicate entries, set protocol to SSH2
 		hosts = get_hosts_from_file(routerFile,default_protocol='ssh2',remove_duplicates=True)
 
-
 		if username == '':				# If username is blank
 			print
 			account = read_login()		# Prompt the user for login credentials
@@ -142,7 +155,6 @@ def routerLogin():
 
 		else:							# Else use username/password from configFile
 			account = Account(name=username, password=b64decode(password))
-
 		
 		queue = Queue(verbose=0, max_threads=1)	# Minimal message from queue, 1 threads
 		queue.add_account(account)				# Use supplied user credentials
@@ -151,25 +163,39 @@ def routerLogin():
 		queue.run(hosts, buildIndex)			# Create queue using provided hosts
 		queue.shutdown()						# End all running threads and close queue
 		
-	# Exception: router file was not able to be opened
+	# Exception: router file could not be opened
 	except IOError:
 		print
 		print "--> An error occurred opening "+routerFile+"."
 
-# Change the filenames of these variables to suit your needs
-configFile='settings.cfg'
+
+# Check to determine if any arguments may have been presented at the command
+# line and generate help message for "--help" switch
+parser = ArgumentParser(
+    formatter_class=RawDescriptionHelpFormatter,description=(
+		Application.name+" "+Application.version+" "+Application.date+"\n"+
+		"--\n"+
+		"Description: "+Application.description+"\n\n"+
+		"Author: "+Application.author+"\n"+
+		"URL:    "+Application.url
+	))
+# Add additional argument to handle any optional configFile passed to application
+parser.add_argument("-c", "--config", dest="configFile", help="config file", default="settings.cfg", required=False)
+args = parser.parse_args()		# Set 'args' = input from command line
+configFile = args.configFile	# Set configFile = config file from command line OR 'settings.cfg'
+
 
 # Determine OS in use and clear screen of previous output
-system('cls' if name=='nt' else 'clear')
+if name == 'nt':	system("cls")
+else:				system("clear")
 
 # PRINT PROGRAM BANNER
-print "Build VRF Index "+version()
-print "-"*(16+len(version()))
+print Application.name+" "+Application.version+" "+Application.date
+print "-"*(len(Application.name+Application.version+Application.date)+2)
 
 try:
 # Try to open configFile
-	with open(configFile, 'r'):
-		print
+	with open(configFile, 'r'): pass
 	
 except IOError:
 # Except if configFile does not exist, create an example configFile to work from
@@ -180,6 +206,8 @@ except IOError:
 			exampleFile.write("## BuildVRFIndex.py CONFIGURATION FILE ##\n#\n")
 			exampleFile.write("[account]\n#password is base64 encoded! Plain text passwords WILL NOT WORK!\n#Use website such as http://www.base64encode.org/ to encode your password\nusername=\npassword=\n#\n")
 			exampleFile.write("[BuildVRFIndex]\n#Check your paths! Files will be created; Directories will not.\n#Bad directories may result in errors!\n#variable=C:\path\\to\\filename.ext\nrouterFile=routers.txt\nindexFile=index.txt\nindexFileTmp=index.txt.tmp\n")
+
+	# Exception: file could not be created
 	except IOError:
 		print
 		print "--> An error occurred creating the example "+configFile+"."
@@ -198,19 +226,23 @@ finally:
 	if fileExist(routerFile):
 	# If the routerFile exists, proceed to login to routers
 		if fileExist(indexFile):	# If indexFile exists
-			remove(indexFile)	# Remove existing indexFile
-		routerLogin()
+			remove(indexFile)		# Remove existing indexFile
+		routerLogin()				# Log into router(s)	
 
 	else: # if fileExist(routerFile):
 	# Else if routerFile does not exist, create an example file and exit
 		try:
 			with open (routerFile, 'w') as exampleFile:
+				print
+				print "--> Router file not found; Creating "+routerFile+"."
+				print "    Edit this file and restart the application."
 				exampleFile.write("## BuildVRFIndex.py ROUTER FILE ##\n#\n")
 				exampleFile.write("#Enter a list of hostnames or IP Addresses, one per line.\n#For example:\n")
 				exampleFile.write("192.168.1.1\n192.168.1.2\nRouterA\nRouterB\nRouterC\netc...")
-				print "--> Router file not found; Creating "+routerFile+"."
-				print "    Edit this file and restart the application."
+
+		# Exception: file could not be created
 		except IOError:
+			print
 			print "--> Required file "+routerFile+" not found; An error has occurred creating "+routerFile+"."
 			print "This file must contain a list, one per line, of Hostnames or IP addresses the"
 			print "application will then connect to download the running-config."

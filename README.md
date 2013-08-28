@@ -49,19 +49,19 @@ Exscript module [https://github.com/knipknap/exscript/](https://github.com/knipk
 1. Upon execution, the application will search its parent directory for the 
    presence of a file named `settings.cfg`.
    * If this file exists, the application will proceed to Step 3.
-   * If this file does not exist, the application will proceed to Step 2.
+   * If this file does not exist, the application will continue to Step 2.
 2. The application will create an example `settings.cfg` file in the parent
    directory and continue to Step 3.
 3. The application will open the `settings.cfg` file and retrieve any custom
    settings from the file and continue to Step 4.
 4. The application will search its parent directory for the presence of a file
    named `routers.txt`.
-   * If this file exists, the application will proceed to Step 5.
+   * If this file exists, the application will continue to Step 5.
    * If this file does not exist, the application will proceed to Step 6.
 5. The application will check to see if a username and password was specified
    in the `settings.cfg` file.
    * If a username and password was set, the application will proceed to Step 8.
-   * If a username and password was not set, the application will proceed to Step 7.
+   * If a username and password was not set, the application will continue to Step 7.
 6. The application will display instructions for the use of the `routers.txt`
    file.  The application will also create an example file and place it in 
    its parent directory end exit (END).
