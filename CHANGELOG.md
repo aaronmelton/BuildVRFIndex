@@ -1,6 +1,12 @@
 # BuildVRFIndex.py #
 ---
 
+## BuildVRFIndex v0.0.7-alpha (2013-08-29) ##
+* Added basic logging to file to track results if application has to connect
+  to a router to run buildIndex().
+* Suppressed error SPAM from stdout by adding stderr=(open(os.devnull, 'w'))
+  to the Queue() function. (Errors are still written to the log.)
+
 ## BuildVRFIndex v0.0.6-alpha (2013-08-28) ##
 * Added functionality to specify configFile from the command line.
 * Updated README.md
